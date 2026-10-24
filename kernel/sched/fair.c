@@ -1130,17 +1130,20 @@ static inline void cancel_protect_slice(struct sched_entity *se)
  */
 static struct sched_entity *pick_eevdf(struct cfs_rq *cfs_rq, bool protect)
 {
-	struct rb_node *node = cfs_rq->tasks_timeline.rb_root.rb_node;
-	struct sched_entity *se = __pick_first_entity(cfs_rq);
 	struct sched_entity *curr = cfs_rq->curr;
+	struct sched_entity *se;
 	struct sched_entity *best = NULL;
+	struct rb_node *node;
 
 	/*
 	 * We can safely skip eligibility check if there is only one entity
 	 * in this cfs_rq, saving some cycles.
 	 */
-	if (cfs_rq->h_nr_queued == 1)
-		return curr && curr->on_rq ? curr : se;
+	if (cfs_rq->h_nr_queued == 1) {
+		if (curr && curr->on_rq)
+			return curr;
+		return __pick_first_entity(cfs_rq);
+	}
 
 	/*
 	 * Picking the ->next buddy will affect latency but not fairness.
@@ -1158,12 +1161,15 @@ static struct sched_entity *pick_eevdf(struct cfs_rq *cfs_rq, bool protect)
 	if (curr && protect && protect_slice(curr))
 		return curr;
 
+	se = __pick_first_entity(cfs_rq);
+
 	/* Pick the leftmost entity if it's eligible */
 	if (se && entity_eligible(cfs_rq, se)) {
 		best = se;
 		goto found;
 	}
 
+	node = cfs_rq->tasks_timeline.rb_root.rb_node;
 	/* Heap search for the EEVD entity */
 	while (node) {
 		struct rb_node *left = node->rb_left;
