@@ -5166,7 +5166,8 @@ check_folio:
 		}
 		rmap_flags |= RMAP_EXCLUSIVE;
 	}
-	folio_ref_add(folio, nr_pages - 1);
+	if (nr_pages > 1)
+		folio_ref_add(folio, nr_pages - 1);
 	flush_icache_pages(vma, page, nr_pages);
 	vmf->orig_pte = pte_advance_pfn(pte, page_idx);
 
@@ -5373,7 +5374,8 @@ void map_anon_folio_pte_nopf(struct folio *folio, pte_t *pte,
 	if (uffd_wp)
 		entry = pte_mkuffd(entry);
 
-	folio_ref_add(folio, nr_pages - 1);
+	if (nr_pages > 1)
+		folio_ref_add(folio, nr_pages - 1);
 	folio_add_new_anon_rmap(folio, vma, addr, RMAP_EXCLUSIVE);
 	folio_add_lru_vma(folio, vma);
 	set_ptes(vma->vm_mm, addr, pte, entry, nr_pages);
@@ -5832,7 +5834,8 @@ fallback:
 		goto fallback;
 	}
 
-	folio_ref_add(folio, nr_pages - 1);
+	if (nr_pages > 1)
+		folio_ref_add(folio, nr_pages - 1);
 	set_pte_range(vmf, folio, page, nr_pages, addr);
 	type = is_cow ? MM_ANONPAGES : mm_counter_file(folio);
 	add_mm_counter(vma->vm_mm, type, nr_pages);
