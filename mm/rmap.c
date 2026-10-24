@@ -1071,25 +1071,31 @@ int folio_referenced(struct folio *folio, int is_locked,
 		struct mem_cgroup *memcg, vma_flags_t *vma_flags)
 {
 	bool we_locked = false;
-	struct folio_referenced_arg pra = {
-		.mapcount = folio_mapcount(folio),
+	struct folio_referenced_arg pra;
+	struct rmap_walk_control rwc;
+	int mapcount;
+
+	VM_WARN_ON_ONCE_FOLIO(folio_is_zone_device(folio), folio);
+	vma_flags_clear_all(vma_flags);
+
+	if (!folio_raw_mapping(folio))
+		return 0;
+
+	mapcount = folio_mapcount(folio);
+	if (!mapcount)
+		return 0;
+
+	pra = (struct folio_referenced_arg) {
+		.mapcount = mapcount,
 		.memcg = memcg,
 	};
-	struct rmap_walk_control rwc = {
+	rwc = (struct rmap_walk_control) {
 		.rmap_one = folio_referenced_one,
 		.arg = (void *)&pra,
 		.anon_lock = folio_lock_anon_vma_read,
 		.try_lock = true,
 		.invalid_vma = invalid_folio_referenced_vma,
 	};
-
-	VM_WARN_ON_ONCE_FOLIO(folio_is_zone_device(folio), folio);
-	vma_flags_clear_all(vma_flags);
-	if (!pra.mapcount)
-		return 0;
-
-	if (!folio_raw_mapping(folio))
-		return 0;
 
 	if (!is_locked) {
 		we_locked = folio_trylock(folio);
